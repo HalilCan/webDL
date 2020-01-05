@@ -1,24 +1,108 @@
-import urllib.request
-from urllib.error import URLError
 import os
 import sys
+import datetime
+import urllib.request
+from urllib.error import URLError
 from selenium import webdriver
-from selenium.common.exceptions import NoSuchElementException
-from selenium.webdriver.common.keys import Keys
+from selenium.common.exceptions import NoSuchElementException\
 
 'note: the urllib save call is a separate instance'
+now = datetime.datetime.now()
 
 class SubredditDownloader:
-    def __init__(self, subreddit, limit, sort_period):
+    def __init__(self, driver, subreddit, limit, sort_period):
         self.prefix = "https://old.reddit.com/"
+        self.top_url = "/top/?t="
         self.subreddit = subreddit
         self.limit = limit
         self.sort_period = sort_period
+        self.driver = driver
 
     def get_sort_url(self):
-        return self.prefix + "/top/?t=" + self.sort_period
+        return self.prefix + "/" + self.subreddit + self.top_url + self.sort_period
 
-    def
+    def get_dated_folder_name(self):
+        return str(now.year) + "-" + str(now.month) + "-" + str(now.day) + "-" + self.subreddit + "-" + str(self.limit)
+
+    def unblock(self):
+        if "reddit.com: over 18?" in self.driver.title:
+            yes_button = self.driver.find_elements_by_xpath("//div[@class='buttons']/button")[1]
+            yes_button.click()
+            return 0
+        else:
+            return 1
+
+    def save_media(self, media_url, folder_path, name):
+        save_path = os.path.join(folder_path, name)
+        try:
+            urllib.request.urlretrieve(media_url, save_path)
+        except URLError:
+            print("urlOpen error for " + media_url)
+        return 0
+
+    def next_page(self):
+        try:
+            next_button = self.driver.find_element_by_xpath("//span[@class='next-button']/a")
+            next_button.click()
+            return 0
+        except NoSuchElementException:
+            return -1
+
+    def get_things_in_page(self):
+        things_path = "//div[contains(@class,\"sitetable\")]/div[contains(@class,\"thing\")]"
+        try:
+            things_list = self.driver.find_elements_by_xpath(things_path)
+            print(len(things_list))
+            return things_list
+        except NoSuchElementException:
+            return -1
+
+    def save_media_in_page(self, max_count, cur_count, folder_path):
+        things = self.get_things_in_page()
+        count = 0
+        print(len(things))
+        for thingObj in things:
+            if max_count < 1:
+                return count
+            thing = Thing(self.driver, thingObj, "")
+            src = thing.get_data_url()
+            print(src)
+
+            name = thing.get_savefile_name(str(count), "")
+            if name == -1:
+                continue
+
+            self.save_media(src, folder_path, name)
+            # no error handling yet
+            count += 1
+            cur_count += 1
+            max_count -= 1
+        return count
+
+    def download(self):
+        full_url = self.get_sort_url()
+        driver = self.driver
+        count = self.limit
+        folder_name = self.get_dated_folder_name()
+
+        driver.get(full_url)
+        cur_count = 1
+
+        while count > 0:
+            unblock_result = self.unblock()
+            print("unblock_result:" + str(unblock_result))
+            downloaded_count = self.save_media_in_page(count, cur_count, folder_name)
+            print("downloaded_count:" + str(downloaded_count))
+            if downloaded_count == -1:
+                return -1  # error while saving from previews
+            count -= downloaded_count
+            cur_count += downloaded_count
+
+            next_page_result = self.next_page()
+            print("next_page_result:" + str(next_page_result))
+            if next_page_result == -1:
+                return -2  # no more pages
+        return 0
 
 
 class Thing:
@@ -95,54 +179,12 @@ class Thing:
     def get_data_url(self):
         return self.data_url
 
+
 def clear_preview_url(url):
     url = url.replace("preview", "i")
     url = url.split("?")[0]
     return url
 
-
-def save_media(media_url, folder_path, name):
-    save_path = os.path.join(folder_path, name)
-    try:
-        urllib.request.urlretrieve(media_url, save_path)
-    except URLError:
-        print("urlOpen error for " + media_url)
-    return 0
-
-
-def unblock(driver):
-    if "reddit.com: over 18?" in driver.title:
-        yes_button = driver.find_elements_by_xpath("//div[@class='buttons']/button")[1]
-        yes_button.click()
-        return 0
-    else:
-        return 1
-
-
-def get_reddit_things(driver):
-    things_path = "//div[contains(@class,\"sitetable\")]/div[contains(@class,\"thing\")]"
-    try:
-        things_list = driver.find_elements_by_xpath(things_path)
-        print(len(things_list))
-        return things_list
-    except NoSuchElementException:
-        return -1
-
-
-def get_thing_type(thing):
-    link = 0
-    href = ""
-    if "link" in thing.get_attribute("class"):
-        link = 1
-
-    reddit_link_signatures = ["redd.it", "reddit.c"]
-    if any(signature in thing.get_attribute("data-url") for signature in reddit_link_signatures):
-        href = "reddit"
-    imgur_link_signatures = ["imgur.c"]
-    if any(signature in thing.get_attribute("data-url") for signature in imgur_link_signatures):
-        href = "imgur"
-
-    return {"link": link, "href": href}
 
 def open_previews(driver):
     preview_buttons = driver.find_elements_by_class_name("expando")
@@ -154,64 +196,6 @@ def open_previews(driver):
 # preview_buttons = driver.find_element_by_xpath("//div[@class='entry']/div[@class='expando']")
 
 
-def download_images_directly_from_thing_list(driver, max_count, cur_count, folder_path):
-    things = get_reddit_things(driver)
-    count = 0
-    print(len(things))
-    for thingObj in things:
-        if max_count < 1:
-            return count
-        thing = Thing(driver, thingObj, "")
-        src = thing.get_data_url()
-        print(src)
-
-        name = thing.get_savefile_name(str(count), "")
-        if name == -1:
-            continue
-
-        save_media(src, folder_path, name)
-        # no error handling yet
-        count += 1
-        cur_count += 1
-        max_count -= 1
-    return count
-
-
-def next_page(driver):
-    try:
-        next_button = driver.find_element_by_xpath("//span[@class='next-button']/a")
-        next_button.click()
-        return 0
-    except NoSuchElementException:
-        return -1
-
-
-def download_top_media_in_subreddit(driver, subreddit, count, full_folder_path):
-    prefix = "http://old.reddit.com/r/"
-    suffix = "/top/?t=all"
-    full_url = prefix + subreddit + suffix
-
-    driver.get(full_url)
-
-    cur_count = 1
-
-    while count > 0:
-        unblock_result = unblock(driver)
-        print("unblock_result:" + str(unblock_result))
-        downloaded_count = download_images_directly_from_thing_list(driver, count, cur_count, full_folder_path)
-        print("downloaded_count:" + str(downloaded_count))
-        if downloaded_count == -1:
-            return -1  # error while saving from previews
-        count -= downloaded_count
-        cur_count += downloaded_count
-
-        next_page_result = next_page(driver)
-        print("next_page_result:" + str(next_page_result))
-        if next_page_result == -1:
-            return -2  # no more pages
-    return 0
-
-
 def main():
     # usage: python redditDL.py subreddit_name max_media_download_count
     # folder needs to be within cwd
@@ -219,6 +203,7 @@ def main():
 
     subreddit = args[1]
     max_count = int(args[2])
+    sort_period = args[3]
 
     folder_path = args[1] + args[2]
     cwd = os.getcwd()
@@ -227,7 +212,8 @@ def main():
         os.makedirs(full_folder_path)
 
     driver = webdriver.Firefox()
-    download_result = download_top_media_in_subreddit(driver, subreddit, max_count, full_folder_path)
+    download_daemon = SubredditDownloader(driver, subreddit, max_count, sort_period)
+    download_result = download_daemon.download()
 
     if download_result < 0:
         driver.close()
