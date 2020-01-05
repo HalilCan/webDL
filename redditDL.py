@@ -76,7 +76,8 @@ def next_page(driver):
 
 def download_top_media_in_subreddit(driver, subreddit, count, full_folder_path):
     prefix = "http://old.reddit.com/r/"
-    fullUrl = prefix.join(subreddit)
+    fullUrl = prefix + subreddit
+
     driver.get(fullUrl)
 
     while count > 0:
@@ -97,8 +98,6 @@ def main():
     # folder needs to be within cwd
     args = sys.argv
 
-    print(args[1].join(args[2]))
-    return args[3]
     subreddit = args[1]
     max_count = args[2]
 
@@ -107,12 +106,14 @@ def main():
     full_folder_path = os.path.join(cwd, folder_path)
 
     driver = webdriver.Firefox()
-    downloadResult = download_top_media_in_subreddit(driver, subreddit, maxCount, full_folder_path)
+    download_result = download_top_media_in_subreddit(driver, subreddit, max_count, full_folder_path)
 
-    if downloadResult < 0:
+    if download_result < 0:
         driver.close()
-        return "HUMAN EXE ERROR"
+        print("HUMAN EXE ERROR")
+        return download_result
     driver.close()
+    return 0
 
 
 if __name__ == "__main__":
