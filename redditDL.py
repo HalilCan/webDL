@@ -8,17 +8,35 @@ from selenium.webdriver.common.keys import Keys
 
 'note: the urllib save call is a separate instance'
 
+class SubredditDownloader:
+    def __init__(self, subreddit, limit, sort_period):
+        self.prefix = "https://old.reddit.com/"
+        self.subreddit = subreddit
+        self.limit = limit
+        self.sort_period = sort_period
+
+    def get_sort_url(self):
+        return self.prefix + "/top/?t=" + self.sort_period
+
+    def
+
+
 class Thing:
     def get_thing_details(self):
         thing = self.dom
         is_link = 0
         site = ""
-        title = ""
-
-        src = thing.get_attribute("data-url")
+        title = "error: no title found"
+        data_url = ""
 
         if "link" in thing.get_attribute("class"):
+            src = thing.get_attribute("data-url")
+            if src is None:
+                print("no data-url found in link Thing")
+                src = ""
             is_link = 1
+        else:
+            src = ""
 
         reddit_link_signatures = ["redd.it", "reddit.c"]
         if any(signature in src for signature in reddit_link_signatures):
@@ -27,26 +45,41 @@ class Thing:
         if any(signature in src for signature in imgur_link_signatures):
             site = "imgur"
 
-        permalink_name = thing.get_attribute("data_permalink").rstrip("/").split("/")[-1]
+        permalink_name = thing.get_attribute("data-permalink").rstrip("/").split("/")[-1]
 
-        return {"is_link": is_link, "site": site, "src": src, "permalink_name": permalink_name}
+        data_url = thing.get_attribute("data-url")
 
-    def __init__(self, dom_object):
+        return {"is_link": is_link, "site": site, "src": src, "permalink_name": permalink_name,
+                "data_url": data_url, "title": title}
+
+    def __init__(self, driver, dom_object, prefix):
+        self.driver = driver
         self.dom = dom_object
-        # TODO: python function calls
-        init_details = self.get_thing_details()
-        self.src = init_details.src
-        self.site = init_details.src
-        self.is_link = init_details.is_link
-        # TODO: setters in detail function
-        self.title = init_details.title
-        self.permalink_name = init_details.permalink_name
+        self.prefix = prefix
 
-    def printable_name(self, prefix):
+        init_details = self.get_thing_details()
+        self.src = init_details["src"]
+        self.site = init_details["site"]
+        self.is_link = init_details["is_link"]
+        self.data_url = init_details["data_url"]
+        # TODO: handle text title
+        self.title = init_details["title"]
+        self.permalink_name = init_details["permalink_name"]
+
+    def get_printable_name(self, prefix, suffix):
         if len(self.permalink_name) > 75:
-            return prefix + self.permalink_name[:75]
+            return str(prefix) + '-' + self.permalink_name[:75] + str(suffix)
         else:
-            return prefix + self.permalink_name
+            return str(prefix) + '-' + self.permalink_name + str(suffix)
+
+    def get_savefile_name(self, prefix, suffix):
+        extension = self.data_url.split(".")[-1]
+        if len(extension) > 3:
+            print("extension error! \n extension: " + extension + "\n src: " + self.data_url)
+            extension = ""
+            return -1
+        name = self.get_printable_name(prefix, suffix) + "." + extension
+        return name
 
     def is_link_thing(self):
         return self.is_link
@@ -54,9 +87,13 @@ class Thing:
     def get_site(self):
         return self.site
 
-    
+    def get_reddit_page(self):
+        prefix = self.prefix
+        address = prefix + self.dom.get_attribute("data-permalink")
+        return address
 
-
+    def get_data_url(self):
+        return self.data_url
 
 def clear_preview_url(url):
     url = url.replace("preview", "i")
@@ -107,142 +144,31 @@ def get_thing_type(thing):
 
     return {"link": link, "href": href}
 
-
-def get_data_address_from_thing(thing):
-    src = "none"
-    try:
-        src = thing.get_attribute("data-url")
-    except: # TODO: check what the exception is
-        print("couldn't get src from data-url in " + thing)
-        return -1
-    return src
-
-
 def open_previews(driver):
     preview_buttons = driver.find_elements_by_class_name("expando")
     for button in preview_buttons:
         button.click()
     return 0
-
-
-def get_correct_name(src, count):
-    extension = src.split(".")[-1]
-    if len(extension) > 3:
-        print("extension error! \n extension: " + extension + "\n src: " + src);
-        extension = ""
-    name = str(count) + "." + extension
-    return name
-
-
-def convert_and_save_from_previews(driver, count, folder_path):
-    preview_images = driver.find_elements_by_xpath("//div[@class='media-preview-content']/a")
-    downloaded_count = 0
-    for preview_image in preview_images:
-        src = preview_image.get_attribute("href")
-        if count > 0:
-            name = get_correct_name(src, count)
-            save_media(src, folder_path, name)
-            count -= 1
-            downloaded_count += 1
-        else:
-            break
-    if count > 0:
-        return -1
-    else:
-        return downloaded_count
-
-
-def download_images_in_page_directly_from_expando_list(driver, max_count, cur_count, folder_path):
-    preview_buttons = driver.find_elements_by_xpath("//div[contains(@class,\"entry\")]/div[contains(@class,\"expando\")]")
-    count = 0
-    for button in preview_buttons:
-        if max_count < 1:
-            return count
-
-        cached_html = button.get_attribute("data-cachedhtml")
-        src = ""
-        try:
-            src = cached_html.split('a href=\"')[1].split('\"')[0]
-        except IndexError:
-            print("Index error for: " + src + "\n" + cached_html)
-            try:
-                src = "https:" + cached_html.split("iframe src=\"")[1].split('\"')[0]
-            except IndexError:
-                print("Double Index error for: " + src + "\n" + cached_html)
-        name = get_correct_name(src, cur_count)
-
-        save_media(src, folder_path, name)
-        # no error handling yet
-        count += 1
-        cur_count += 1
-        max_count -= 1
-    return count
-
-
-def download_images_in_page_from_thumbnail_links(driver, max_count, cur_count, folder_path):
-    # this is for non reddit, i.imgur.com specifically currently
-
-    thumbnails = driver.find_elements_by_xpath("//div[contains(@sitetable,\"entry\")]/div[contains(@class,\"thing\")]/a[contains(@class,\"thumbnail\")]")
-
-    count = 0
-    for button in thumbnails:
-        if max_count < 1:
-            return count
-
-        cached_html = button.get_attribute("data-cachedhtml")
-        src = ""
-        try:
-            src = cached_html.split('a href=\"')[1].split('\"')[0]
-        except IndexError:
-            print("Index error for: " + src + "\n" + cached_html)
-            try:
-                src = "https:" + cached_html.split("iframe src=\"")[1].split('\"')[0]
-            except IndexError:
-                print("Double Index error for: " + src + "\n" + cached_html)
-        name = get_correct_name(src, cur_count)
-
-        save_media(src, folder_path, name)
-        # no error handling yet
-        count += 1
-        cur_count += 1
-        max_count -= 1
-    return count
-
-# problem54 = ' + <iframe src="//www.redditmedia.com/mediaembed/d7r85n" id="media-embed-d7r85n-grh" class="media-embed" width="610" height="490" border="0" frameBorder="0" scrolling="no" allowfullscreen></iframe> ''
-
-
-def download_images_directly_from_expando_list(driver, subreddit, max_count, folder_path):
-    prefix = "http://old.reddit.com/r/"
-    full_url = prefix + subreddit
-    driver.get(full_url)
-    # missing pagination count management
-    preview_buttons = driver.find_element_by_xpath("//div[@class='entry']/div[@class='expando']")
-    count = 0
-    for button in preview_buttons:
-        if max_count < 1:
-            return count
-        cached_html = button.get_attribute("data-cachedhtml")
-        src = cached_html.split('a href=\"')[1].split('\"')[0]
-        name = get_correct_name(src, count)
-        save_media(src, folder_path, name)
-        # no error handling yet
-        count += 1
-        max_count -= 1
-    return count
+# thumbnails = driver.find_elements_by_xpath("//div[contains(@sitetable,\"entry\")]
+#   /div[contains(@class,\"thing\")]/a[contains(@class,\"thumbnail\")]")
+# preview_buttons = driver.find_element_by_xpath("//div[@class='entry']/div[@class='expando']")
 
 
 def download_images_directly_from_thing_list(driver, max_count, cur_count, folder_path):
     things = get_reddit_things(driver)
     count = 0
     print(len(things))
-    for thing in things:
+    for thingObj in things:
         if max_count < 1:
             return count
-        thing_type = get_thing_type(thing)
-        thing_name = get_thing_name(thing)
-        src = get_data_address_from_thing(thing)
+        thing = Thing(driver, thingObj, "")
+        src = thing.get_data_url()
         print(src)
-        name = get_correct_name(src, cur_count)
+
+        name = thing.get_savefile_name(str(count), "")
+        if name == -1:
+            continue
+
         save_media(src, folder_path, name)
         # no error handling yet
         count += 1
@@ -287,14 +213,14 @@ def download_top_media_in_subreddit(driver, subreddit, count, full_folder_path):
 
 
 def main():
-    # usage: python redditDL.py subreddit_name max_media_download_count folder_name
+    # usage: python redditDL.py subreddit_name max_media_download_count
     # folder needs to be within cwd
     args = sys.argv
 
     subreddit = args[1]
     max_count = int(args[2])
 
-    folder_path = args[3]
+    folder_path = args[1] + args[2]
     cwd = os.getcwd()
     full_folder_path = os.path.join(cwd, folder_path)
     if not os.path.isdir(full_folder_path):
@@ -302,7 +228,6 @@ def main():
 
     driver = webdriver.Firefox()
     download_result = download_top_media_in_subreddit(driver, subreddit, max_count, full_folder_path)
-    # download_result = download_images_directly_from_expando_list(driver, subreddit, max_count, folder_path)
 
     if download_result < 0:
         driver.close()

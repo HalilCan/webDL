@@ -12,3 +12,4 @@ DONE     fix outbound behavior
      handle etc errors
      handle different blocks
      handle source indifference
+     datafield objectifier Class
