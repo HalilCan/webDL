@@ -8,6 +8,55 @@ from selenium.webdriver.common.keys import Keys
 
 'note: the urllib save call is a separate instance'
 
+class Thing:
+    def get_thing_details(self):
+        thing = self.dom
+        is_link = 0
+        site = ""
+        title = ""
+
+        src = thing.get_attribute("data-url")
+
+        if "link" in thing.get_attribute("class"):
+            is_link = 1
+
+        reddit_link_signatures = ["redd.it", "reddit.c"]
+        if any(signature in src for signature in reddit_link_signatures):
+            site = "reddit"
+        imgur_link_signatures = ["imgur.c"]
+        if any(signature in src for signature in imgur_link_signatures):
+            site = "imgur"
+
+        permalink_name = thing.get_attribute("data_permalink").rstrip("/").split("/")[-1]
+
+        return {"is_link": is_link, "site": site, "src": src, "permalink_name": permalink_name}
+
+    def __init__(self, dom_object):
+        self.dom = dom_object
+        # TODO: python function calls
+        init_details = self.get_thing_details()
+        self.src = init_details.src
+        self.site = init_details.src
+        self.is_link = init_details.is_link
+        # TODO: setters in detail function
+        self.title = init_details.title
+        self.permalink_name = init_details.permalink_name
+
+    def printable_name(self, prefix):
+        if len(self.permalink_name) > 75:
+            return prefix + self.permalink_name[:75]
+        else:
+            return prefix + self.permalink_name
+
+    def is_link_thing(self):
+        return self.is_link
+    
+    def get_site(self):
+        return self.site
+
+    
+
+
 
 def clear_preview_url(url):
     url = url.replace("preview", "i")
@@ -32,6 +81,7 @@ def unblock(driver):
     else:
         return 1
 
+
 def get_reddit_things(driver):
     things_path = "//div[contains(@class,\"sitetable\")]/div[contains(@class,\"thing\")]"
     try:
@@ -40,22 +90,6 @@ def get_reddit_things(driver):
         return things_list
     except NoSuchElementException:
         return -1
-
-
-def get_thing_type(thing):
-    link = 0
-    href = ""
-    if "link" in thing.get_attribute("class"):
-        link = 1
-
-    reddit_link_signatures = ["redd.it", "reddit.c"]
-    if any(signature in thing.get_attribute("data-url") for signature in reddit_link_signatures):
-        href = "reddit"
-    imgur_link_signatures = ["imgur.c"]
-    if any(signature in thing.get_attribute("data-url") for signature in imgur_link_signatures):
-        href = "imgur"
-
-    return {"link": link, "href": href}
 
 
 def get_thing_type(thing):
