@@ -1,5 +1,6 @@
 import urllib
 import os
+import sys
 from selenium import webdriver
 from selenium.common.exceptions import NoSuchElementException
 from selenium.webdriver.common.keys import Keys
@@ -15,7 +16,7 @@ def clear_preview_url(url):
 
 def save_media(media_url, folder_path, name):
     save_path = os.path.join(folder_path, name)
-    urllib.urlretrieve(media_url, savePath)
+    urllib.urlretrieve(media_url, save_path)
     return 0
 
 
@@ -28,78 +29,91 @@ def unblock(driver):
         return 1
 
 
-def openPreviews(driver):
-    previewButtons = driver.find_elements_by_class_name("expando")
-    for button in previewButtons:
+def open_previews(driver):
+    preview_buttons = driver.find_elements_by_class_name("expando")
+    for button in preview_buttons:
         button.click()
     return 0
 
 
-def getCorrectName(src, count):
+def get_correct_name(src, count):
     extension = src.split(".")[-1]
     name = os.path.join(str(count), extension)
     return name
 
 
-def convert_and_save_from_previews(driver, count, folderPath):
-    previewImages = driver.find_elements_by_xpath("//div[@class='media-preview-content']/a")
-    downloadedCount = 0
-    for previewImage in previewImages:
-        src = previewImage.get_attribute("href")
+def convert_and_save_from_previews(driver, count, folder_path):
+    preview_images = driver.find_elements_by_xpath("//div[@class='media-preview-content']/a")
+    downloaded_count = 0
+    for preview_image in preview_images:
+        src = preview_image.get_attribute("href")
         if count > 0:
-            name = getCorrectName(src, count)
-            save_media(src, folderPath, name)
+            name = get_correct_name(src, count)
+            save_media(src, folder_path, name)
             count -= 1
-            downloadedCount += 1
+            downloaded_count += 1
         else:
             break
     if count > 0:
         return -1
     else:
-        return downloadedCount
+        return downloaded_count
 
 
-def downloadImageDirectlyFromExpandoList(driver):
-    previewButtons = driver.find_elements_by_class_name("expando")
-    for button in previewButtons:
-        'TODO if time improvement significant'
+def download_image_directly_from_expando_list(driver):
+    preview_buttons = driver.find_elements_by_class_name("expando")
+    for button in preview_buttons:
+        'TODO if runtime improvement significant'
 
 
-def nextPage(driver):
+def next_page(driver):
     try:
-        nextButton = driver.find_element_by_xpath("//span[@class='next-button']/a")
-        nextButton.click()
+        next_button = driver.find_element_by_xpath("//span[@class='next-button']/a")
+        next_button.click()
     except NoSuchElementException:
         return -1
 
 
-def downloadTopMediaInSubreddit(driver, address, count, fullFolderPath):
+def download_top_media_in_subreddit(driver, subreddit, count, full_folder_path):
+    prefix = "http://old.reddit.com/r/"
+    fullUrl = prefix.join(subreddit)
+    driver.get(fullUrl)
+
     while count > 0:
-        unblockResult = unblock(driver)
-        openPreviewsResult = openPreviews(driver)
-        downloadedCount = convert_and_save_from_previews(driver, count, fullFolderPath)
-        if downloadedCount == -1:
+        unblock_result = unblock(driver)
+        open_previews_result = open_previews(driver)
+        downloaded_count = convert_and_save_from_previews(driver, count, full_folder_path)
+        if downloaded_count == -1:
             return -1  # error while saving from previews
-        count = count - downloadedCount
-        nextPageResult = nextPage(driver)
-        if nextPageResult == -1:
+        count = count - downloaded_count
+        next_page_result = next_page(driver)
+        if next_page_result == -1:
             return -2  # no more pages
     return 0
 
 
-def main(argv):
-    address = argv[1]
-    maxCount = argv[2]
+def main():
+    # usage: python redditDL.py subreddit_name max_media_download_count folder_name
+    # folder needs to be within cwd
+    args = sys.argv
 
-    folderPath = argv[3]
+    print(args[1].join(args[2]))
+    return args[3]
+    subreddit = args[1]
+    max_count = args[2]
+
+    folder_path = args[3]
     cwd = os.getcwd()
-    fullFolderPath = os.path.join(cwd, folderPath)
+    full_folder_path = os.path.join(cwd, folder_path)
 
     driver = webdriver.Firefox()
-    driver.get(address)
-    downloadResult = downloadTopMediaInSubreddit(driver, address, maxCount, fullFolderPath)
+    downloadResult = download_top_media_in_subreddit(driver, subreddit, maxCount, full_folder_path)
 
     if downloadResult < 0:
         driver.close()
         return "HUMAN EXE ERROR"
     driver.close()
+
+
+if __name__ == "__main__":
+    main()
