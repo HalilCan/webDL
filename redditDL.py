@@ -11,7 +11,7 @@ now = datetime.datetime.now()
 
 class SubredditDownloader:
     def __init__(self, driver, subreddit, limit, sort_period):
-        self.prefix = "https://old.reddit.com/"
+        self.prefix = "https://old.reddit.com/r/"
         self.top_url = "/top/?t="
         self.subreddit = subreddit
         self.limit = limit
@@ -19,10 +19,15 @@ class SubredditDownloader:
         self.driver = driver
 
     def get_sort_url(self):
-        return self.prefix + "/" + self.subreddit + self.top_url + self.sort_period
+        return self.prefix + self.subreddit + self.top_url + self.sort_period
 
     def get_dated_folder_name(self):
-        return str(now.year) + "-" + str(now.month) + "-" + str(now.day) + "-" + self.subreddit + "-" + str(self.limit)
+        cwd = os.getcwd()
+        rel_path = str(now.year) + "-" + str(now.month) + "-" + str(now.day) + "-" + self.sort_period + "-" + self.subreddit + "-" + str(self.limit)
+        full_folder_path = os.path.join(cwd, rel_path)
+        if not os.path.isdir(full_folder_path):
+            os.makedirs(full_folder_path)
+        return rel_path
 
     def unblock(self):
         if "reddit.com: over 18?" in self.driver.title:
@@ -219,6 +224,7 @@ def main():
         driver.close()
         print("HUMAN EXE ERROR")
         return download_result
+
     driver.close()
     return 0
 
