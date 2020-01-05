@@ -1,7 +1,10 @@
 #TODO
-DONE get basic structure in place
-     implement structure
-     rudimentary end-to-end test
+DONE     get basic structure in place
+DONE     implement structure
+DOBE     rudimentary end-to-end test
+DONE     fix outbound behavior
+     make Thing class to compartmentalize
+     save both ranks and original names
      handle waits
      handle existing downloads
      handle different sorts from index

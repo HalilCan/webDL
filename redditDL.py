@@ -1,4 +1,5 @@
 import urllib.request
+from urllib.error import URLError
 import os
 import sys
 from selenium import webdriver
@@ -16,7 +17,10 @@ def clear_preview_url(url):
 
 def save_media(media_url, folder_path, name):
     save_path = os.path.join(folder_path, name)
-    urllib.request.urlretrieve(media_url, save_path)
+    try:
+        urllib.request.urlretrieve(media_url, save_path)
+    except URLError:
+        print("urlOpen error for " + media_url)
     return 0
 
 
@@ -28,6 +32,57 @@ def unblock(driver):
     else:
         return 1
 
+def get_reddit_things(driver):
+    things_path = "//div[contains(@class,\"sitetable\")]/div[contains(@class,\"thing\")]"
+    try:
+        things_list = driver.find_elements_by_xpath(things_path)
+        print(len(things_list))
+        return things_list
+    except NoSuchElementException:
+        return -1
+
+
+def get_thing_type(thing):
+    link = 0
+    href = ""
+    if "link" in thing.get_attribute("class"):
+        link = 1
+
+    reddit_link_signatures = ["redd.it", "reddit.c"]
+    if any(signature in thing.get_attribute("data-url") for signature in reddit_link_signatures):
+        href = "reddit"
+    imgur_link_signatures = ["imgur.c"]
+    if any(signature in thing.get_attribute("data-url") for signature in imgur_link_signatures):
+        href = "imgur"
+
+    return {"link": link, "href": href}
+
+
+def get_thing_type(thing):
+    link = 0
+    href = ""
+    if "link" in thing.get_attribute("class"):
+        link = 1
+
+    reddit_link_signatures = ["redd.it", "reddit.c"]
+    if any(signature in thing.get_attribute("data-url") for signature in reddit_link_signatures):
+        href = "reddit"
+    imgur_link_signatures = ["imgur.c"]
+    if any(signature in thing.get_attribute("data-url") for signature in imgur_link_signatures):
+        href = "imgur"
+
+    return {"link": link, "href": href}
+
+
+def get_data_address_from_thing(thing):
+    src = "none"
+    try:
+        src = thing.get_attribute("data-url")
+    except: # TODO: check what the exception is
+        print("couldn't get src from data-url in " + thing)
+        return -1
+    return src
+
 
 def open_previews(driver):
     preview_buttons = driver.find_elements_by_class_name("expando")
@@ -38,6 +93,9 @@ def open_previews(driver):
 
 def get_correct_name(src, count):
     extension = src.split(".")[-1]
+    if len(extension) > 3:
+        print("extension error! \n extension: " + extension + "\n src: " + src);
+        extension = ""
     name = str(count) + "." + extension
     return name
 
@@ -66,15 +124,57 @@ def download_images_in_page_directly_from_expando_list(driver, max_count, cur_co
     for button in preview_buttons:
         if max_count < 1:
             return count
+
         cached_html = button.get_attribute("data-cachedhtml")
-        src = cached_html.split('a href=\"')[1].split('\"')[0]
+        src = ""
+        try:
+            src = cached_html.split('a href=\"')[1].split('\"')[0]
+        except IndexError:
+            print("Index error for: " + src + "\n" + cached_html)
+            try:
+                src = "https:" + cached_html.split("iframe src=\"")[1].split('\"')[0]
+            except IndexError:
+                print("Double Index error for: " + src + "\n" + cached_html)
         name = get_correct_name(src, cur_count)
+
         save_media(src, folder_path, name)
         # no error handling yet
         count += 1
         cur_count += 1
         max_count -= 1
     return count
+
+
+def download_images_in_page_from_thumbnail_links(driver, max_count, cur_count, folder_path):
+    # this is for non reddit, i.imgur.com specifically currently
+
+    thumbnails = driver.find_elements_by_xpath("//div[contains(@sitetable,\"entry\")]/div[contains(@class,\"thing\")]/a[contains(@class,\"thumbnail\")]")
+
+    count = 0
+    for button in thumbnails:
+        if max_count < 1:
+            return count
+
+        cached_html = button.get_attribute("data-cachedhtml")
+        src = ""
+        try:
+            src = cached_html.split('a href=\"')[1].split('\"')[0]
+        except IndexError:
+            print("Index error for: " + src + "\n" + cached_html)
+            try:
+                src = "https:" + cached_html.split("iframe src=\"")[1].split('\"')[0]
+            except IndexError:
+                print("Double Index error for: " + src + "\n" + cached_html)
+        name = get_correct_name(src, cur_count)
+
+        save_media(src, folder_path, name)
+        # no error handling yet
+        count += 1
+        cur_count += 1
+        max_count -= 1
+    return count
+
+# problem54 = ' + <iframe src="//www.redditmedia.com/mediaembed/d7r85n" id="media-embed-d7r85n-grh" class="media-embed" width="610" height="490" border="0" frameBorder="0" scrolling="no" allowfullscreen></iframe> ''
 
 
 def download_images_directly_from_expando_list(driver, subreddit, max_count, folder_path):
@@ -97,10 +197,31 @@ def download_images_directly_from_expando_list(driver, subreddit, max_count, fol
     return count
 
 
+def download_images_directly_from_thing_list(driver, max_count, cur_count, folder_path):
+    things = get_reddit_things(driver)
+    count = 0
+    print(len(things))
+    for thing in things:
+        if max_count < 1:
+            return count
+        thing_type = get_thing_type(thing)
+        thing_name = get_thing_name(thing)
+        src = get_data_address_from_thing(thing)
+        print(src)
+        name = get_correct_name(src, cur_count)
+        save_media(src, folder_path, name)
+        # no error handling yet
+        count += 1
+        cur_count += 1
+        max_count -= 1
+    return count
+
+
 def next_page(driver):
     try:
         next_button = driver.find_element_by_xpath("//span[@class='next-button']/a")
         next_button.click()
+        return 0
     except NoSuchElementException:
         return -1
 
@@ -117,10 +238,7 @@ def download_top_media_in_subreddit(driver, subreddit, count, full_folder_path):
     while count > 0:
         unblock_result = unblock(driver)
         print("unblock_result:" + str(unblock_result))
-        # open_previews_result = open_previews(driver)
-        # print("open_previews_result:" + str(open_previews_result))
-        # downloaded_count = convert_and_save_from_previews(driver, count, full_folder_path)
-        downloaded_count = download_images_in_page_directly_from_expando_list(driver, count, cur_count, full_folder_path)
+        downloaded_count = download_images_directly_from_thing_list(driver, count, cur_count, full_folder_path)
         print("downloaded_count:" + str(downloaded_count))
         if downloaded_count == -1:
             return -1  # error while saving from previews
