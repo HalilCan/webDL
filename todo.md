@@ -13,3 +13,4 @@ DONE     Turn downloader into an object to simplify and improve code
      handle different blocks
      handle source indifference
      datafield objectifier Class
+DONE     fix count persistence through pagination

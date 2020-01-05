@@ -9,6 +9,7 @@ from selenium.common.exceptions import NoSuchElementException\
 'note: the urllib save call is a separate instance'
 now = datetime.datetime.now()
 
+
 class SubredditDownloader:
     def __init__(self, driver, subreddit, limit, sort_period):
         self.prefix = "https://old.reddit.com/r/"
@@ -73,7 +74,7 @@ class SubredditDownloader:
             src = thing.get_data_url()
             print(src)
 
-            name = thing.get_savefile_name(str(count), "")
+            name = thing.get_savefile_name(str(cur_count), "")
             if name == -1:
                 continue
 
@@ -116,7 +117,6 @@ class Thing:
         is_link = 0
         site = ""
         title = "error: no title found"
-        data_url = ""
 
         if "link" in thing.get_attribute("class"):
             src = thing.get_attribute("data-url")
@@ -165,7 +165,6 @@ class Thing:
         extension = self.data_url.split(".")[-1]
         if len(extension) > 3:
             print("extension error! \n extension: " + extension + "\n src: " + self.data_url)
-            extension = ""
             return -1
         name = self.get_printable_name(prefix, suffix) + "." + extension
         return name
