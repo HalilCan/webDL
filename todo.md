@@ -41,3 +41,4 @@ DONE     write x-ly wallpaper profile code (multi-source)
 DONE     organize wallUpdate
 ~DONE     wallUpdate bugs
      test Artstation
+     resolution or AR limit for wallUpdate

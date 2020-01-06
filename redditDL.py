@@ -99,6 +99,8 @@ class SubredditDownloader:
             thing = Thing(self.driver, thingObj, self.self_post_prefix)
             if thing.is_link:
                 src = thing.get_data_url()
+                if not src:
+                    continue
                 if isinstance(src, int):
                     continue
                 print(src)
@@ -319,6 +321,8 @@ class Thing:
             self.driver.execute_script("window.close()")
             self.driver.switch_to.window(self.driver.window_handles[0])
             # return the found source
+            if src == "":
+                return -6
             return src
         if self.site == "artstation":
             return self.data_url
