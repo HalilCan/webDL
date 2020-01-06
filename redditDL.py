@@ -104,7 +104,7 @@ class SubredditDownloader:
                 if isinstance(src, int):
                     continue
                 print(src)
-                name = thing.get_savefile_name(str(cur_count), "")
+                name = thing.get_savefile_name(str(cur_count) + "-" + self.subreddit, "")
                 if name == -1:
                     continue
                 self.save_media(src, folder_path, name)
