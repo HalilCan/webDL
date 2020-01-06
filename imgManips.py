@@ -46,7 +46,6 @@ def are_identical(images, dhash_difference_limit=7):
     if not are_aspect_ratios_similar(images):
         return 0
     if abs(get_dhash(images[0]) - get_dhash(images[1])) < dhash_difference_limit:
-        print("images are identical!")
         return 1
     else:
         return 0
@@ -65,20 +64,22 @@ def clear_duplicates_in_bag(fn_array):
     removed_count = 0
     comparison_count = 0
     extensions_list = ["", ".png", ".jpg", ".jpeg", ".bmp"]
+    seen_list = []
     for file in fn_array:
         try:
             img_1 = cv2.imread(file)
+            seen_list.append(file)
             if any(file.endswith(extension) for extension in extensions_list):
                 for file2 in fn_array:
-                    if file == file2:
+                    if file2 in seen_list:
                         continue
                     comparison_count += 1
                     if any(file2.endswith(extension) for extension in extensions_list):
                         img_2 = cv2.imread(file2)
+                        seen_list.append(file2)
                         if are_identical([img_1, img_2]):
                             os.remove(file2)
                             removed_count += 1
-                            print("REMOVED ", file2)
         except AttributeError:
             continue
     return {"comparison_count": comparison_count, "removed_count": removed_count}
@@ -95,12 +96,19 @@ def clear_duplicates(directory_string):
     for file in os.listdir(directory_string):
         fullfn_1 = os.path.join(directory_abs, file)
         image = cv2.imread(fullfn_1)
-        ratio = get_aspect_ratio(image)
+        try:
+            ratio = get_aspect_ratio(image)
+        except AttributeError:
+            continue
+            # i really don't care about non-unicode at the moment, en/decode when I do, I guess
         bag_result = bag_image(fullfn_1, ratio, img_dict)
     for ratio, ratio_bag in img_dict.items():
+        print(ratio, len(ratio_bag), ratio_bag[0])
         op_result = clear_duplicates_in_bag(ratio_bag)
         removed_count += op_result["removed_count"]
         comparison_count += op_result["comparison_count"]
+        print(ratio, op_result)
+
     return {"comparison_count": comparison_count, "removed_count": removed_count}
 
 
