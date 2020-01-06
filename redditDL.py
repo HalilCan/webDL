@@ -426,6 +426,7 @@ def main():
     fp.set_preference("http.response.timeout", 3)
     fp.set_preference("dom.max_script_run_time", 3)
     driver = webdriver.Firefox(firefox_profile=fp)
+    driver.set_window_position(-2000, 0)
 
     download_daemon = SubredditDownloader(driver, subreddit, max_count, sort_period, is_flat)
     download_result = download_daemon.download()
