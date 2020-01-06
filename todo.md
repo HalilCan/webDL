@@ -29,3 +29,7 @@ DONE     fix extra folder bug
 
 DONE     fix external gif waits (problem with non-capitalized versions, where the capd one is correct.
          maybe get page (eager) and use url for quick processing
+
+      Unblock bug
+
+      write x-ly wallpaper profile code (multi-source)

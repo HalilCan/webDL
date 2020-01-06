@@ -35,6 +35,7 @@ class SubredditDownloader:
 
     def unblock(self):
         if "reddit.com: over 18?" or "quarantined" in self.driver.title:
+            print(self.driver.title)
             yes_button = self.driver.find_elements_by_xpath("//div[@class='buttons']/button")[1]
             yes_button.click()
             return 0
