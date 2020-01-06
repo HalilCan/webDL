@@ -17,5 +17,12 @@ DONE     handle gfycat
 DONE     handle v.redd.it videos
 DONE     optimize gfycat (with urllib?)
 
+DONE     handle text things (oh boy)
+DONE        create TextPost object to populate and save html data collected
+DONE        create TextPost local save() method
 
-     handle text things (oh boy)
+DONE     only windows-compatible. handle save paths
+
+DONE     fix extra folder bug
+
+     self post formatting (just dl styles?-path dependent)

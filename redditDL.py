@@ -14,6 +14,7 @@ now = datetime.datetime.now()
 class SubredditDownloader:
     def __init__(self, driver, subreddit, limit, sort_period):
         self.prefix = "https://old.reddit.com/r/"
+        self.self_post_prefix = "https://old.reddit.com"
         self.top_url = "/top/?t="
         self.subreddit = subreddit
         self.limit = limit
@@ -25,14 +26,15 @@ class SubredditDownloader:
 
     def get_dated_folder_name(self):
         cwd = os.getcwd()
-        rel_path = str(now.year) + "-" + str(now.month) + "-" + str(now.day) + "-" + self.sort_period + "-" + self.subreddit + "-" + str(self.limit)
+        rel_path = str(now.year) + "-" + str(now.month) + "-" + str(now.day) + "-" +\
+                   self.sort_period + "-" + self.subreddit + "-" + str(self.limit)
         full_folder_path = os.path.join(cwd, rel_path)
         if not os.path.isdir(full_folder_path):
             os.makedirs(full_folder_path)
         return rel_path
 
     def unblock(self):
-        if "reddit.com: over 18?" in self.driver.title:
+        if "reddit.com: over 18?" or "quarantined" in self.driver.title:
             yes_button = self.driver.find_elements_by_xpath("//div[@class='buttons']/button")[1]
             yes_button.click()
             return 0
@@ -68,22 +70,35 @@ class SubredditDownloader:
         except NoSuchElementException:
             return -1
 
+    def save_self_post(self, thing, folder_path, rank_prefix):
+        content = thing.get_self_post_content_and_comments()
+        title = content['title']
+        post_content = content['post']
+        comments = content['comments']
+
+        post_object = TextPost(title, post_content, comments, rank_prefix)
+        cwd = os.getcwd()
+        full_folder_path = os.path.join(cwd, folder_path)
+        print(full_folder_path)
+        save_result = post_object.save(full_folder_path)
+        return save_result
+
     def save_media_in_page(self, max_count, cur_count, folder_path):
         things = self.get_things_in_page()
         count = 0
         for thingObj in things:
             if max_count < 1:
                 return count
-            thing = Thing(self.driver, thingObj, "")
-            src = thing.get_data_url()
-            print(src)
-
-            name = thing.get_savefile_name(str(cur_count), "")
-            if name == -1:
-                continue
-            custom_extension = ""
-
-            self.save_media(src, folder_path, name)
+            thing = Thing(self.driver, thingObj, self.self_post_prefix)
+            if thing.is_link:
+                src = thing.get_data_url()
+                print(src)
+                name = thing.get_savefile_name(str(cur_count), "")
+                if name == -1:
+                    continue
+                self.save_media(src, folder_path, name)
+            else:
+                self.save_self_post(thing, folder_path, str(cur_count))
             count += 1
             cur_count += 1
             max_count -= 1
@@ -118,18 +133,22 @@ class SubredditDownloader:
 class Thing:
     def get_thing_details(self):
         thing = self.dom
-        is_link = 0
         site = ""
         title = "error: no title found"
 
-        if "link" in thing.get_attribute("class"):
-            src = thing.get_attribute("data-url")
-            if src is None:
-                print("no data-url found in link Thing")
-                src = ""
+        if "self" not in thing.get_attribute("class"):
             is_link = 1
         else:
+            is_link = 0
+
+        src = thing.get_attribute("data-url")
+        if src is None:
+            print("no data-url found in link Thing")
             src = ""
+        author = thing.get_attribute("data-author")
+        vote_count = thing.get_attribute("data-score")
+        comment_count = thing.get_attribute("data-comments-count")
+        subreddit = thing.get_attribute("data-subreddit")
 
         reddit_link_signatures = ["redd.it", "reddit.c"]
         if any(signature in src for signature in reddit_link_signatures):
@@ -145,7 +164,8 @@ class Thing:
         data_url = thing.get_attribute("data-url")
 
         return {"is_link": is_link, "site": site, "src": src, "permalink_name": permalink_name,
-                "data_url": data_url, "title": title}
+                "data_url": data_url, "title": title, "author": author, "subreddit": subreddit,
+                "vote_count": vote_count, "comment_count": comment_count,}
 
     def __init__(self, driver, dom_object, prefix):
         self.driver = driver
@@ -157,6 +177,10 @@ class Thing:
         self.site = init_details["site"]
         self.is_link = init_details["is_link"]
         self.data_url = init_details["data_url"]
+        self.author = init_details["author"]
+        self.vote_count = init_details["vote_count"]
+        self.comment_count = init_details["comment_count"]
+        self.subreddit = init_details["subreddit"]
         # TODO: handle text title
         self.title = init_details["title"]
         self.permalink_name = init_details["permalink_name"]
@@ -258,6 +282,54 @@ class Thing:
             # return the found source
             return src
 
+    def get_self_post_content_and_comments(self):
+        title = self.dom.get_attribute("data-permalink").rstrip("/").split("/")[-1]
+        self.driver.execute_script("window.open()")
+        self.driver.switch_to.window(self.driver.window_handles[1])
+        # load new window with the gfycat link
+        url = self.prefix + self.data_url
+        self.driver.get(url)
+        # find post anc commentArea elements
+        post_elem_path = "//div[contains(@class,\"thing\")]/div[contains(@class,\"entry\")]"
+        post_elem = self.driver.find_elements_by_xpath(post_elem_path)[0]
+        comments_path = "//div[contains(@class,\"commentarea\")]/div[contains(@class,\"sitetable\")]"
+        comment_elem = self.driver.find_elements_by_xpath(comments_path)[0]
+
+        posts = post_elem.get_attribute('outerHTML')
+        comments = comment_elem.get_attribute('outerHTML')
+        # close window using js
+        self.driver.execute_script("window.close()")
+        self.driver.switch_to.window(self.driver.window_handles[0])
+
+        return {"title": title, "post": posts, "comments": comments}
+
+
+class TextPost:
+    def __init__(self, title, post_content, comments, rank_prefix):
+        self.title = title
+        self.post_content = post_content
+        self.comments = comments
+        self.rank_prefix = rank_prefix
+
+    def save(self, path_to_folder):
+        abs_path = os.path.join(path_to_folder, self.rank_prefix + "-" + self.title[:100] + ".html")
+        html_doc = open(abs_path, 'w', encoding='utf-8')
+        print(abs_path)
+
+        html_header = "<html>"
+        header = "<head><title>" + self.title + "</title></head>"
+        body = "<body><div class = 'content'>" + self.post_content + "</div>" + \
+               "<div class = 'comment-table'>" + self.comments + "</div></body>"
+        html_footer = "</html>"
+        html_content = html_header + header + body + html_footer
+
+        print(header)
+
+        print(html_doc.write(html_content))
+        html_doc.close()
+
+        return 0
+
 
 def clear_preview_url(url):
     url = url.replace("preview", "i")
@@ -286,9 +358,6 @@ def main():
 
     folder_path = args[1] + args[2]
     cwd = os.getcwd()
-    full_folder_path = os.path.join(cwd, folder_path)
-    if not os.path.isdir(full_folder_path):
-        os.makedirs(full_folder_path)
 
     driver = webdriver.Firefox()
     download_daemon = SubredditDownloader(driver, subreddit, max_count, sort_period)
