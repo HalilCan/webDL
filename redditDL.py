@@ -2,9 +2,10 @@ import os
 import sys
 import datetime
 import urllib.request
-from urllib.error import URLError
+from urllib.error import URLError, HTTPError
 from selenium import webdriver
-from selenium.common.exceptions import NoSuchElementException\
+from selenium.common.exceptions import NoSuchElementException
+from selenium.webdriver.common.keys import Keys
 
 'note: the urllib save call is a separate instance'
 now = datetime.datetime.now()
@@ -39,12 +40,17 @@ class SubredditDownloader:
             return 1
 
     def save_media(self, media_url, folder_path, name):
+        name = name
         save_path = os.path.join(folder_path, name)
-        try:
-            urllib.request.urlretrieve(media_url, save_path)
-        except URLError:
-            print("urlOpen error for " + media_url)
-        return 0
+        if os.path.isfile(save_path):
+            print("file exists: ", save_path)
+            return 1
+        else:
+            try:
+                urllib.request.urlretrieve(media_url, save_path)
+            except URLError:
+                print("urlOpen error for " + media_url)
+            return 0
 
     def next_page(self):
         try:
@@ -58,7 +64,6 @@ class SubredditDownloader:
         things_path = "//div[contains(@class,\"sitetable\")]/div[contains(@class,\"thing\")]"
         try:
             things_list = self.driver.find_elements_by_xpath(things_path)
-            print(len(things_list))
             return things_list
         except NoSuchElementException:
             return -1
@@ -66,20 +71,19 @@ class SubredditDownloader:
     def save_media_in_page(self, max_count, cur_count, folder_path):
         things = self.get_things_in_page()
         count = 0
-        print(len(things))
         for thingObj in things:
             if max_count < 1:
                 return count
             thing = Thing(self.driver, thingObj, "")
-            src = thing.get_data_url(self.driver)
+            src = thing.get_data_url()
             print(src)
 
             name = thing.get_savefile_name(str(cur_count), "")
             if name == -1:
                 continue
+            custom_extension = ""
 
             self.save_media(src, folder_path, name)
-            # no error handling yet
             count += 1
             cur_count += 1
             max_count -= 1
@@ -156,6 +160,7 @@ class Thing:
         # TODO: handle text title
         self.title = init_details["title"]
         self.permalink_name = init_details["permalink_name"]
+        self.custom_extension = ""
 
     def get_printable_name(self, prefix, suffix):
         if len(self.permalink_name) > 75:
@@ -163,8 +168,14 @@ class Thing:
         else:
             return str(prefix) + '-' + self.permalink_name + str(suffix)
 
+    def get_data_extension(self):
+        if self.custom_extension == "":
+            return self.get_data_url().split(".")[-1]
+        else:
+            return self.custom_extension
+
     def get_savefile_name(self, prefix, suffix):
-        extension = self.data_url.split(".")[-1]
+        extension = self.get_data_extension()
         if len(extension) > 4:
             print("extension error! \n extension: " + extension + "\n src: " + self.data_url)
             return -1
@@ -182,13 +193,59 @@ class Thing:
         address = prefix + self.dom.get_attribute("data-permalink")
         return address
 
-    def get_data_url(self, driver):
-        if self.site == "imgur" or self.site == "reddit":
+    def get_data_url(self):
+        if self.site == "reddit":
+            if len(self.data_url.split(".")[-1]) > 4:
+                if "v.red" in self.data_url:
+                    self.custom_extension = "mp4"
+                    reddit_dash_suffixes = ["1080", "720", "480", "360", "240", "192", "95"]
+                    # open new window and switch to it using js
+                    self.driver.execute_script("window.open()")
+                    self.driver.switch_to.window(self.driver.window_handles[1])
+                    # load new window by trying DASH reddit DASH suffixes
+                    success = 0
+                    trial_link = ""
+                    for suffix in reddit_dash_suffixes:
+                        trial_link = self.data_url + "/DASH_" + suffix
+                        if not is_v_reddit_error_page(trial_link):
+                            success = 1
+                            break
+                    if success == 0:
+                        print("reddit DASH blob url resolve error")
+                        return -3
+                    # close window using js
+                    self.driver.execute_script("window.close()")
+                    self.driver.switch_to.window(self.driver.window_handles[0])
+                    # return the found source
+                    return trial_link
+                else:
+                    print("reddit data url resolve error")
+                    return -2
+            return self.data_url
+        if self.site == "imgur":
+            if self.data_url.split(".")[-1] == "gifv":
+                self.data_url = self.data_url[:-4] + "mp4"
             return self.data_url
         if self.site == "gfycat":
+            # open new window and switch to it using js
+            self.driver.execute_script("window.open()")
+            self.driver.switch_to.window(self.driver.window_handles[1])
             # load new window with the gfycat link
+            self.driver.get(self.data_url)
             # source_elem = //video[class includes video and media]/source[type is "video/mp4" src includes fat.gfycat]
+            source_elem_path = "//video[contains(@class,\"video\") and contains(@class,\"media\")]" \
+                               "/source[contains(@type,\"video/mp4\")]"
+            sources = self.driver.find_elements_by_xpath(source_elem_path)
             # return src of source_elem (maybe array into singleton into attribute)
+            src = ""
+            for source in sources:
+                if "thumbs.g" not in source.get_attribute("src"):
+                    src = source.get_attribute("src")
+            # close window using js
+            self.driver.execute_script("window.close()")
+            self.driver.switch_to.window(self.driver.window_handles[0])
+            # return the found source
+            return src
 
 
 def clear_preview_url(url):
@@ -233,6 +290,17 @@ def main():
 
     driver.close()
     return 0
+
+
+def is_v_reddit_error_page(url):
+    try:
+        response = urllib.request.urlopen(url)
+        if response.status == 403:
+            return 1
+        else:
+            return 0
+    except HTTPError:
+        return 1
 
 
 if __name__ == "__main__":
