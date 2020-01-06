@@ -162,17 +162,23 @@ class Thing:
         subreddit = thing.get_attribute("data-subreddit")
 
         reddit_link_signatures = ["redd.it", "reddit.c"]
+        imgur_link_signatures = ["imgur.c"]
         if any(signature in src for signature in reddit_link_signatures):
             site = "reddit"
-        imgur_link_signatures = ["imgur.c"]
-        if any(signature in src for signature in imgur_link_signatures):
+        elif any(signature in src for signature in imgur_link_signatures):
             site = "imgur"
-        if "gfycat" in thing.get_attribute("data-domain"):
+        elif "gfycat" in thing.get_attribute("data-domain"):
             site = "gfycat"
+        elif "artstation." in thing.get_attribute("href"):
+            site = "other"
+            src = thing.get_attribute("href").split("?")[0]
+        else:
+            site = "other"
+            src = thing.get_attribute("href").split("?")[0]
 
         permalink_name = thing.get_attribute("data-permalink").rstrip("/").split("/")[-1]
 
-        data_url = thing.get_attribute("data-url")
+        data_url = src
 
         return {"is_link": is_link, "site": site, "src": src, "permalink_name": permalink_name,
                 "data_url": data_url, "title": title, "author": author, "subreddit": subreddit,
@@ -208,6 +214,7 @@ class Thing:
             src = self.get_data_url()
             if isinstance(src, int):
                 return -1
+            print(src)
             return src.split(".")[-1]
         else:
             return self.custom_extension
@@ -313,6 +320,8 @@ class Thing:
             self.driver.switch_to.window(self.driver.window_handles[0])
             # return the found source
             return src
+        if self.site == "other":
+            return self.data_url
 
     def get_self_post_content_and_comments(self):
         title = self.dom.get_attribute("data-permalink").rstrip("/").split("/")[-1]

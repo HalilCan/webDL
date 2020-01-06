@@ -28,15 +28,19 @@ def rearrange_folders(full_folder_path, full_wallpaper_folder_path, cwd, count_p
     # make wallpaper folder... somehow.
     # just get the wallpaper folder path and add to it before deleting the temp folder
     for file in full_folder_path:
-        try:
-            shutil.copy(os.path.join(full_temp_path, file), os.path.join(full_folder_path, file))
-            shutil.move(os.path.join(full_temp_path, file), os.path.join(full_wallpaper_folder_path, file))
-        except:
-            print(full_wallpaper_folder_path, full_temp_path, full_temp_path)
-    try:
-        os.removedirs(full_temp_path)
-    except:
-        print("cannot remove: ", full_temp_path)
+        # try:
+        temp_file_loc = os.path.join(full_temp_path, file)
+        full_file_loc = os.path.join(full_folder_path, file)
+        wallpaper_file_loc = os.path.join(full_wallpaper_folder_path, file)
+        print(temp_file_loc, full_file_loc, wallpaper_file_loc)
+        shutil.copy(os.path.join(full_temp_path, file), os.path.join(full_folder_path, file))
+        shutil.move(os.path.join(full_temp_path, file), os.path.join(full_wallpaper_folder_path, file))
+        # except:
+        #     print(full_wallpaper_folder_path, full_temp_path, full_temp_path)
+    # try:
+    os.removedirs(full_temp_path)
+    # except:
+    #     print("cannot remove: ", full_temp_path)
     return 0
 
 def main():
