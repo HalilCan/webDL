@@ -12,7 +12,7 @@ now = datetime.datetime.now()
 
 
 class SubredditDownloader:
-    def __init__(self, driver, subreddit, limit, sort_period):
+    def __init__(self, driver, subreddit, limit, sort_period, flat):
         self.prefix = "https://old.reddit.com/r/"
         self.self_post_prefix = "https://old.reddit.com"
         self.top_url = "/top/?t="
@@ -20,15 +20,20 @@ class SubredditDownloader:
         self.limit = limit
         self.sort_period = sort_period
         self.driver = driver
+        self.is_flat = flat
 
     def get_sort_url(self):
         return self.prefix + self.subreddit + self.top_url + self.sort_period
 
     def get_dated_folder_name(self):
         cwd = os.getcwd()
-        rel_path = str(now.year) + "-" + str(now.month) + "-" + str(now.day) + "-" +\
-                   self.sort_period + "-" + self.subreddit + "-" + str(self.limit)
-        full_folder_path = os.path.join(cwd, rel_path)
+        if self.is_flat:
+            rel_path = str(now.year) + "-" + str(now.month) + "-" + str(now.day) + "-" +\
+                       self.sort_period + "-" + self.subreddit + "-" + str(self.limit)
+            full_folder_path = os.path.join(cwd, rel_path)
+        else:
+            full_folder_path = os.path.join(cwd, str(self.limit))
+
         if not os.path.isdir(full_folder_path):
             os.makedirs(full_folder_path)
         return rel_path
@@ -385,15 +390,18 @@ def main():
     max_count = int(args[2])
     sort_period = args[3]
 
-    folder_path = args[1] + args[2]
-    cwd = os.getcwd()
+    is_flat = 0
+    if len(args) > 4:
+        flags = args[3:]
+        if "-f" in flags:
+            is_flat = 1
 
     fp = webdriver.FirefoxProfile()
     fp.set_preference("http.response.timeout", 3)
     fp.set_preference("dom.max_script_run_time", 3)
     driver = webdriver.Firefox(firefox_profile=fp)
 
-    download_daemon = SubredditDownloader(driver, subreddit, max_count, sort_period)
+    download_daemon = SubredditDownloader(driver, subreddit, max_count, sort_period, is_flat)
     download_result = download_daemon.download()
 
     if download_result < 0:

@@ -1,43 +1,60 @@
-import redditDL
-import imgManips
-from subprocess import call
-
 import os
 import sys
 import datetime
-import urllib.request
-from urllib.error import URLError, HTTPError
-from selenium import webdriver
-from selenium.common.exceptions import NoSuchElementException, TimeoutException
-from selenium.webdriver.common.keys import Keys
+import shutil
+from subprocess import call
 
 now = datetime.datetime.now()
 
+
+def call_downloader(sources, count_per, sort_period):
+    # for each sr, download appropriately
+    # usage: python redditDL.py subreddit_name max_media_download_count sort_period
+    for subreddit in sources:
+        reddit_dl_params = subreddit + " " + str(count_per) + " " + sort_period + " -f"
+        call("redditDL.py " + reddit_dl_params)
+    return 0
+
+
+def rearrange_folders(full_folder_path, full_wallpaper_folder_path, cwd, count_per):
+    # flatten downloads into rel_folder_path
+    # in current impl. they are already flat in /[count_per]
+    full_temp_path = os.path.join(cwd, str(count_per))
+
+    # make wallpaper folder... somehow.
+    # just get the wallpaper folder path and add to it before deleting the temp folder
+    for file in full_folder_path:
+        try:
+            shutil.copy(os.path.join(full_temp_path, file), os.path.join(full_folder_path, file))
+            shutil.move(os.path.join(full_temp_path, file), os.path.join(full_wallpaper_folder_path, file))
+        except:
+            print(full_wallpaper_folder_path, full_temp_path, full_temp_path)
+    try:
+        os.removedirs(full_temp_path)
+    except:
+        print("cannot remove: ", full_temp_path)
+    return 0
+
 def main():
-    # usage: rel_folder_path count_per_sr time_period subreddit_list
+    # usage: abs_or_rel_wallpaper_folder_path count_per_sr time_period subreddit_list
     args = sys.argv
-    folder_path = args[1]
+    wallpaper_folder_path = args[1]
     count_per = args[2]
     sort_period = args[3]
     subreddit_list = args[4:]
 
     dated_folder = str(now.year) + "-" + str(now.month) + "-" + str(now.day) + "-" + \
-        sort_period + "-" + folder_path + "-" + str(count_per)
-
+        sort_period + "-" + "wallpapers" + "-" + str(count_per)
     cwd = os.getcwd()
     full_folder_path = os.path.join(cwd, dated_folder)
-    if not os.path.isdir(full_folder_path):
-        os.makedirs(full_folder_path)
-    # for each sr, download appropriately
-    # usage: python redditDL.py subreddit_name max_media_download_count sort_period
-    for subreddit in subreddit_list:
-        reddit_dl_params = subreddit + " " + str(count_per) + " " + sort_period
-        call("redditDL.py " + reddit_dl_params)
+    if os.path.isabs(wallpaper_folder_path):
+        full_wallpaper_folder_path = wallpaper_folder_path
+    else:
+        full_wallpaper_folder_path = os.path.join(cwd, wallpaper_folder_path)
 
-    # flatten downloads into rel_folder_path
-    # make wallpaper folder... somehow.
-
-
+    download_done = call_downloader(subreddit_list, count_per, sort_period)
+    folders_rearranged = rearrange_folders(full_folder_path, full_wallpaper_folder_path, cwd, count_per)
+    return folders_rearranged
 
 
 if __name__ == "__main__":
