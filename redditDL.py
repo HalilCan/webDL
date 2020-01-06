@@ -4,7 +4,7 @@ import datetime
 import urllib.request
 from urllib.error import URLError, HTTPError
 from selenium import webdriver
-from selenium.common.exceptions import NoSuchElementException
+from selenium.common.exceptions import NoSuchElementException, TimeoutException
 from selenium.webdriver.common.keys import Keys
 
 'note: the urllib save call is a separate instance'
@@ -109,8 +109,10 @@ class SubredditDownloader:
         driver = self.driver
         count = self.limit
         folder_name = self.get_dated_folder_name()
-
-        driver.get(full_url)
+        try:
+            self.driver.get(full_url)
+        except TimeoutException:
+            self.driver.execute_script("window.stop()")
         cur_count = 1
 
         while count > 0:
@@ -266,7 +268,21 @@ class Thing:
             self.driver.execute_script("window.open()")
             self.driver.switch_to.window(self.driver.window_handles[1])
             # load new window with the gfycat link
-            self.driver.get(url)
+            try:
+                self.driver.get(url)
+            except TimeoutException:
+                self.driver.execute_script("window.stop()")
+            # for capitalization differences only, make the quick url checks again to prevent long wait times
+            url = self.driver.current_url
+            for prefix in gfycat_video_url_prefixes:
+                url_trial = url.replace("gfycat.com", prefix + ".gfycat.com") + ".mp4"
+                video_not_found = is_403_error_page(url_trial)
+                if video_not_found:
+                    continue
+                else:
+                    self.driver.execute_script("window.close()")
+                    self.driver.switch_to.window(self.driver.window_handles[0])
+                    return url_trial
             # source_elem = //video[class includes video and media]/source[type is "video/mp4" src includes fat.gfycat]
             source_elem_path = "//video[contains(@class,\"video\") and contains(@class,\"media\")]" \
                                "/source[contains(@type,\"video/mp4\")]"
@@ -288,7 +304,10 @@ class Thing:
         self.driver.switch_to.window(self.driver.window_handles[1])
         # load new window with the gfycat link
         url = self.prefix + self.data_url
-        self.driver.get(url)
+        try:
+            self.driver.get(url)
+        except TimeoutException:
+            self.driver.execute_script("window.stop()")
         # find post anc commentArea elements
         post_elem_path = "//div[contains(@class,\"thing\")]/div[contains(@class,\"entry\")]"
         post_elem = self.driver.find_elements_by_xpath(post_elem_path)[0]
@@ -359,7 +378,11 @@ def main():
     folder_path = args[1] + args[2]
     cwd = os.getcwd()
 
-    driver = webdriver.Firefox()
+    fp = webdriver.FirefoxProfile()
+    fp.set_preference("http.response.timeout", 3)
+    fp.set_preference("dom.max_script_run_time", 3)
+    driver = webdriver.Firefox(firefox_profile=fp)
+
     download_daemon = SubredditDownloader(driver, subreddit, max_count, sort_period)
     download_result = download_daemon.download()
 

@@ -25,4 +25,7 @@ DONE     only windows-compatible. handle save paths
 
 DONE     fix extra folder bug
 
-     self post formatting (just dl styles?-path dependent)
+?     self post formatting (just dl styles?-path dependent)
+
+DONE     fix external gif waits (problem with non-capitalized versions, where the capd one is correct.
+         maybe get page (eager) and use url for quick processing
