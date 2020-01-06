@@ -27,16 +27,20 @@ def rearrange_folders(full_folder_path, full_wallpaper_folder_path, cwd, count_p
 
     # make wallpaper folder... somehow.
     # just get the wallpaper folder path and add to it before deleting the temp folder
-    for file in full_folder_path:
+    for file in os.listdir(full_temp_path):
         # try:
-        temp_file_loc = os.path.join(full_temp_path, file)
-        full_file_loc = os.path.join(full_folder_path, file)
-        wallpaper_file_loc = os.path.join(full_wallpaper_folder_path, file)
-        print(temp_file_loc, full_file_loc, wallpaper_file_loc)
+        if not os.path.isdir(full_folder_path):
+            os.makedirs(full_folder_path)
+        if not os.path.isdir(full_wallpaper_folder_path):
+            os.makedirs(full_wallpaper_folder_path)
         shutil.copy(os.path.join(full_temp_path, file), os.path.join(full_folder_path, file))
         shutil.move(os.path.join(full_temp_path, file), os.path.join(full_wallpaper_folder_path, file))
         # except:
-        #     print(full_wallpaper_folder_path, full_temp_path, full_temp_path)
+        #    print("SHUTIL ERROR")
+        #    temp_file_loc = os.path.join(full_temp_path, file)
+        #    full_file_loc = os.path.join(full_folder_path, file)
+        #    wallpaper_file_loc = os.path.join(full_wallpaper_folder_path, file)
+        #    print(temp_file_loc, full_file_loc, wallpaper_file_loc)
     # try:
     os.removedirs(full_temp_path)
     # except:
@@ -60,7 +64,7 @@ def main():
     else:
         full_wallpaper_folder_path = os.path.join(cwd, wallpaper_folder_path)
 
-    download_done = call_downloader(subreddit_list, count_per, sort_period)
+    # download_done = call_downloader(subreddit_list, count_per, sort_period)
     folders_rearranged = rearrange_folders(full_folder_path, full_wallpaper_folder_path, cwd, count_per)
     return folders_rearranged
 

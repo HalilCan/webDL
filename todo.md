@@ -39,4 +39,5 @@ DONE     write x-ly wallpaper profile code (multi-source)
      starting index support
 
 DONE     organize wallUpdate
-     wallUpdate bugs
+~DONE     wallUpdate bugs
+     test Artstation

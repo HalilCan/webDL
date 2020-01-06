@@ -169,12 +169,12 @@ class Thing:
             site = "imgur"
         elif "gfycat" in thing.get_attribute("data-domain"):
             site = "gfycat"
-        elif "artstation." in thing.get_attribute("href"):
-            site = "other"
-            src = thing.get_attribute("href").split("?")[0]
+        elif "artstation." in thing.get_attribute("data-url"):
+            site = "artstation"
+            src = thing.get_attribute("data-url").split("?")[0]
         else:
             site = "other"
-            src = thing.get_attribute("href").split("?")[0]
+            src = thing.get_attribute("data-url")
 
         permalink_name = thing.get_attribute("data-permalink").rstrip("/").split("/")[-1]
 
@@ -320,8 +320,20 @@ class Thing:
             self.driver.switch_to.window(self.driver.window_handles[0])
             # return the found source
             return src
-        if self.site == "other":
+        if self.site == "artstation":
             return self.data_url
+        else:
+            url = self.data_url
+            if ".jpg" in url:
+                return url + ".jpg"
+            elif ".bmp" in url:
+                return url + ".bmp"
+            elif ".mp4" in url:
+                return url + ".mp4"
+            elif ".webm" in url:
+                return url + ".webm"
+            else:
+                return url
 
     def get_self_post_content_and_comments(self):
         title = self.dom.get_attribute("data-permalink").rstrip("/").split("/")[-1]
