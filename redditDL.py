@@ -163,7 +163,7 @@ class Thing:
 
     def get_savefile_name(self, prefix, suffix):
         extension = self.data_url.split(".")[-1]
-        if len(extension) > 3:
+        if len(extension) > 4:
             print("extension error! \n extension: " + extension + "\n src: " + self.data_url)
             return -1
         name = self.get_printable_name(prefix, suffix) + "." + extension
