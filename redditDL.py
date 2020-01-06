@@ -202,12 +202,12 @@ class Thing:
                     # open new window and switch to it using js
                     self.driver.execute_script("window.open()")
                     self.driver.switch_to.window(self.driver.window_handles[1])
-                    # load new window by trying DASH reddit DASH suffixes
+                    # load new window by trying reddit DASH suffixes
                     success = 0
                     trial_link = ""
                     for suffix in reddit_dash_suffixes:
                         trial_link = self.data_url + "/DASH_" + suffix
-                        if not is_v_reddit_error_page(trial_link):
+                        if not is_403_error_page(trial_link):
                             success = 1
                             break
                     if success == 0:
@@ -227,11 +227,22 @@ class Thing:
                 self.data_url = self.data_url[:-4] + "mp4"
             return self.data_url
         if self.site == "gfycat":
+            # try guessing fat and giant prefixed mp4 files
+            gfycat_video_url_prefixes = ["fat", "giant"]
+            url = self.data_url
+            for prefix in gfycat_video_url_prefixes:
+                url_trial = url.replace("gfycat.com", prefix + ".gfycat.com") + ".mp4"
+                video_not_found = is_403_error_page(url_trial)
+                if video_not_found:
+                    continue
+                else:
+                    return url_trial
+            # if we can't guess the url, follow the gfycat link to get a better look
             # open new window and switch to it using js
             self.driver.execute_script("window.open()")
             self.driver.switch_to.window(self.driver.window_handles[1])
             # load new window with the gfycat link
-            self.driver.get(self.data_url)
+            self.driver.get(url)
             # source_elem = //video[class includes video and media]/source[type is "video/mp4" src includes fat.gfycat]
             source_elem_path = "//video[contains(@class,\"video\") and contains(@class,\"media\")]" \
                                "/source[contains(@type,\"video/mp4\")]"
@@ -292,7 +303,7 @@ def main():
     return 0
 
 
-def is_v_reddit_error_page(url):
+def is_403_error_page(url):
     try:
         response = urllib.request.urlopen(url)
         if response.status == 403:
@@ -300,6 +311,9 @@ def is_v_reddit_error_page(url):
         else:
             return 0
     except HTTPError:
+        return 1
+    except URLError:
+        print("url error in is_403_error_page(" + url + ")")
         return 1
 
 
