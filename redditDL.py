@@ -27,11 +27,12 @@ class SubredditDownloader:
 
     def get_dated_folder_name(self):
         cwd = os.getcwd()
-        if self.is_flat:
+        if not self.is_flat:
             rel_path = str(now.year) + "-" + str(now.month) + "-" + str(now.day) + "-" +\
                        self.sort_period + "-" + self.subreddit + "-" + str(self.limit)
             full_folder_path = os.path.join(cwd, rel_path)
         else:
+            rel_path = str(self.limit)
             full_folder_path = os.path.join(cwd, str(self.limit))
 
         if not os.path.isdir(full_folder_path):

@@ -38,4 +38,4 @@ DONE     write x-ly wallpaper profile code (multi-source)
 
      starting index support
 
-     organize wallUpdate
+DONE     organize wallUpdate

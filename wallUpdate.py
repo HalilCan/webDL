@@ -2,7 +2,7 @@ import os
 import sys
 import datetime
 import shutil
-from subprocess import call
+import subprocess
 
 now = datetime.datetime.now()
 
@@ -10,9 +10,13 @@ now = datetime.datetime.now()
 def call_downloader(sources, count_per, sort_period):
     # for each sr, download appropriately
     # usage: python redditDL.py subreddit_name max_media_download_count sort_period
+    local_python_path = os.path.join(os.getcwd(), "venv", "Scripts", "python.exe")
+    print(local_python_path)
     for subreddit in sources:
-        reddit_dl_params = subreddit + " " + str(count_per) + " " + sort_period + " -f"
-        call("redditDL.py " + reddit_dl_params)
+        print(sources)
+        reddit_dl_params = [local_python_path, 'redditDL.py', subreddit, str(count_per), sort_period, "-f"]
+        # reddit_dl_params = subreddit + " " + str(count_per) + " " + sort_period + " -f"
+        return_code = subprocess.call(reddit_dl_params)
     return 0
 
 
@@ -36,7 +40,7 @@ def rearrange_folders(full_folder_path, full_wallpaper_folder_path, cwd, count_p
     return 0
 
 def main():
-    # usage: abs_or_rel_wallpaper_folder_path count_per_sr time_period subreddit_list
+    # usage: wallUpdate.py abs_or_rel_wallpaper_folder_path count_per_sr time_period subreddit_list
     args = sys.argv
     wallpaper_folder_path = args[1]
     count_per = args[2]
