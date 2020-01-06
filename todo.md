@@ -14,6 +14,6 @@ DONE     fix count persistence through pagination
 DONE     handle duplicates
 DONE     optimize duplicate removal
 DONE     handle gfycat
-     handle v.redd.it videos
+DONE     handle v.redd.it videos
      handle text things (oh boy)
      optimize gfycat (with urllib?)
