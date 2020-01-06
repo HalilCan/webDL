@@ -71,7 +71,7 @@ class SubredditDownloader:
             if max_count < 1:
                 return count
             thing = Thing(self.driver, thingObj, "")
-            src = thing.get_data_url()
+            src = thing.get_data_url(self.driver)
             print(src)
 
             name = thing.get_savefile_name(str(cur_count), "")
@@ -133,6 +133,8 @@ class Thing:
         imgur_link_signatures = ["imgur.c"]
         if any(signature in src for signature in imgur_link_signatures):
             site = "imgur"
+        if "gfycat" in thing.get_attribute("data-domain"):
+            site = "gfycat"
 
         permalink_name = thing.get_attribute("data-permalink").rstrip("/").split("/")[-1]
 
@@ -180,8 +182,13 @@ class Thing:
         address = prefix + self.dom.get_attribute("data-permalink")
         return address
 
-    def get_data_url(self):
-        return self.data_url
+    def get_data_url(self, driver):
+        if self.site == "imgur" or self.site == "reddit":
+            return self.data_url
+        if self.site == "gfycat":
+            # load new window with the gfycat link
+            # source_elem = //video[class includes video and media]/source[type is "video/mp4" src includes fat.gfycat]
+            # return src of source_elem (maybe array into singleton into attribute)
 
 
 def clear_preview_url(url):
