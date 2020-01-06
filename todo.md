@@ -30,6 +30,10 @@ DONE     fix extra folder bug
 DONE     fix external gif waits (problem with non-capitalized versions, where the capd one is correct.
          maybe get page (eager) and use url for quick processing
 
-      Unblock bug
+     Unblock bug
 
-      write x-ly wallpaper profile code (multi-source)
+     write x-ly wallpaper profile code (multi-source)
+
+     Does name checking take too long? It _shouldn't_ depend on file size
+
+     starting index support

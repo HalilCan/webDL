@@ -34,7 +34,7 @@ class SubredditDownloader:
         return rel_path
 
     def unblock(self):
-        if "reddit.com: over 18?" or "quarantined" in self.driver.title:
+        if "reddit.com: over 18?" in self.driver.title or "quarantined" in self.driver.title:
             print(self.driver.title)
             yes_button = self.driver.find_elements_by_xpath("//div[@class='buttons']/button")[1]
             yes_button.click()
@@ -93,6 +93,8 @@ class SubredditDownloader:
             thing = Thing(self.driver, thingObj, self.self_post_prefix)
             if thing.is_link:
                 src = thing.get_data_url()
+                if isinstance(src, int):
+                    continue
                 print(src)
                 name = thing.get_savefile_name(str(cur_count), "")
                 if name == -1:
@@ -197,12 +199,17 @@ class Thing:
 
     def get_data_extension(self):
         if self.custom_extension == "":
-            return self.get_data_url().split(".")[-1]
+            src = self.get_data_url()
+            if isinstance(src, int):
+                return -1
+            return src.split(".")[-1]
         else:
             return self.custom_extension
 
     def get_savefile_name(self, prefix, suffix):
         extension = self.get_data_extension()
+        if isinstance(extension, int):
+            return -1
         if len(extension) > 4:
             print("extension error! \n extension: " + extension + "\n src: " + self.data_url)
             return -1
@@ -222,6 +229,8 @@ class Thing:
 
     def get_data_url(self):
         if self.site == "reddit":
+            if "alb.red" in self.data_url:
+                return 4
             if len(self.data_url.split(".")[-1]) > 4:
                 if "v.red" in self.data_url:
                     self.custom_extension = "mp4"
@@ -368,7 +377,7 @@ def open_previews(driver):
 
 
 def main():
-    # usage: python redditDL.py subreddit_name max_media_download_count
+    # usage: python redditDL.py subreddit_name max_media_download_count sort_period
     # folder needs to be within cwd
     args = sys.argv
 
