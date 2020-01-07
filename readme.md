@@ -1,6 +1,9 @@
 # WebDL
 ## 1. What
 WebDL is a project aiming to make periodical collection and consumption of online media easy. It is not meant to be a replacement for technologies such as RSS, but rather an end-to-end framework using whatever is appropriate to extract and deliver what matters to the user.
+
+![Downloaded wallpapers are organized by rank, source, and name](/images/downloaded_wallpapers.png)
+
 ### 1.a. Current State
 There are three Python scripts in the project: 
 - `redditDL` downloads linked media or content of `self` posts from a specific subreddit using `Selenium` and `urllib`. Content is sorted by vote rank in a user-specified time period.
