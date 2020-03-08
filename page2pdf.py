@@ -57,7 +57,7 @@ def main():
     capabilities['acceptSslCerts'] = True
     capabilities['acceptInsecureCerts'] = True
 
-    pdfkit.from_url('http://stackoverflow.com', 'page.pdf')
+    pdfkit.from_url('https://www.google.com/search?client=firefox-b-1-d&q=Error%3A+Failed+to+load+about%3Ablank%2C+with+network+status+code+301+and+http+status+code+0+-+Protocol+%22about%22+is+unknown', 'page.pdf')
 
     browser = webdriver.Chrome(options=chrome_options, desired_capabilities=capabilities,
                                executable_path=chrome_driver_path)
