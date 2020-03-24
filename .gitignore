@@ -1,3 +1,4 @@
 .idea
 /venv
 geckodriver.log
+comicDL.py

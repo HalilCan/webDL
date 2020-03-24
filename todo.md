@@ -43,3 +43,13 @@
 -     resolution or AR limit for wallUpdate
 ---
 -     badaboom badabang roses make this an app 
+
+
+--------
+comicDL
+- Folder naming
+- image extraction
+- image naming
+- "next" when necessary
+- saving images in folder
+- detecting the end

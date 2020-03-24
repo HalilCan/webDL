@@ -1,36 +1,32 @@
 import os
 import sys
 import datetime
+import json
+import pdfkit
 import urllib.request
 from urllib.error import URLError, HTTPError
 from selenium import webdriver
 from selenium.common.exceptions import NoSuchElementException, TimeoutException
 from selenium.webdriver import DesiredCapabilities
 
-'note: the urllib save call is a separate instance'
+print("Hello")
+print("__name__ value: ", __name__)
 now = datetime.datetime.now()
 
 
 def main():
     print("BY GAWD")
     print(sys.argv)
-    print(sys.path)
+    print(now)
     # usage: python pageDL.py url save_format
     # folder needs to be within cwd
     args = sys.argv
 
     url = args[1]
-    print(url)
     save_format = args[2]
-    print(save_format)
     chrome_driver_path = os.getcwd() + "\chromedriver.exe"
+    chrome81_path = "C:\Program Files (x86)\Google\Chrome Beta\Application\chrome.exe"
     print(chrome_driver_path)
-
-    is_flat = 0
-    if len(args) > 3:
-        flags = args[2:]
-        if "-f" in flags:
-            is_flat = 1
 
     chrome_options = webdriver.ChromeOptions()
     # chrome_options.add_argument("--headless")
@@ -40,42 +36,37 @@ def main():
     chrome_options.add_argument("--window-size=1920,1080")
     chrome_options.add_argument("--print-to-pdf")
     chrome_options.add_argument("--disable-extensions")
+    chrome_options.add_argument('--disable-notifications')
+
+    settings = {
+        "recentDestinations": [{
+            "id": "Save as PDF",
+            "origin": "local",
+            "account": "",
+        }],
+        "selectedDestinationId": "Save as PDF",
+        "version": 2
+    }
+    prefs = {'printing.print_preview_sticky_settings.appState': json.dumps(settings)}
+
+    chrome_options.binary_location = chrome81_path
+    chrome_options.add_experimental_option('prefs', prefs)
+    chrome_options.add_argument('--kiosk-printing')
 
     capabilities = DesiredCapabilities.CHROME.copy()
     capabilities['acceptSslCerts'] = True
     capabilities['acceptInsecureCerts'] = True
 
-    browser = webdriver.Chrome(chrome_options=chrome_options, desired_capabilities=capabilities)
+    pdfkit.from_url('https://www.google.com/search?client=firefox-b-1-d&q=Error%3A+Failed+to+load+about%3Ablank%2C+with+network+status+code+301+and+http+status+code+0+-+Protocol+%22about%22+is+unknown', 'page.pdf')
+
+    browser = webdriver.Chrome(options=chrome_options, desired_capabilities=capabilities,
+                               executable_path=chrome_driver_path)
 
     browser.get(url)
-    browser.save_screenshot("someFile.pdf")
     browser.save_screenshot("someFile.jpg")
+    browser.execute_script("window.print();")
 
-    #download_daemon = pageDownloader(driver, url, save_format)
-    #download_result = download_daemon.download()
+    browser.quit()
 
-    #if download_result < 0:
-    #    driver.close()
-    #    print("HUMAN EXE ERROR")
-    #    return download_result
-
-    browser.close()
-    return 0
-
-
-def is_403_error_page(url):
-    try:
-        response = urllib.request.urlopen(url)
-        if response.status == 403:
-            return 1
-        else:
-            return 0
-    except HTTPError:
-        return 1
-    except URLError:
-        print("url error in is_403_error_page(" + url + ")")
-        return 1
-
-
-if __name__ == "__main__":
+if __name__ == '__main__':
     main()
