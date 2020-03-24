@@ -47,9 +47,11 @@
 
 --------
 comicDL
-- Folder naming
-- image extraction
-- image naming
-- "next" when necessary
-- saving images in folder
-- detecting the end
++ Folder naming
+- metadata extraction
+- saving metadata
++ image extraction
++ image naming
++ "next" when necessary
++ saving images in folder
++ detecting the end
