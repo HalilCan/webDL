@@ -57,3 +57,6 @@ comicDL
 + detecting the end
 + navigate galleries
 + disable JS for ridiculous ads
++ not interactable handled
++ fully successful test +
+- download from a list of sources
