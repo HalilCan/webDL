@@ -55,3 +55,4 @@ comicDL
 + "next" when necessary
 + saving images in folder
 + detecting the end
++ navigate galleries
