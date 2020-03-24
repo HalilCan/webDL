@@ -56,3 +56,4 @@ comicDL
 + saving images in folder
 + detecting the end
 + navigate galleries
++ disable JS for ridiculous ads
