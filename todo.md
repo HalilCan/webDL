@@ -59,4 +59,4 @@ comicDL
 + disable JS for ridiculous ads
 + not interactable handled
 + fully successful test +
-- download from a list of sources
++ download from a list of sources
