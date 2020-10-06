@@ -2,6 +2,7 @@ import os
 import sys
 import datetime
 import urllib.request
+from http.client import RemoteDisconnected
 from urllib.error import URLError, HTTPError
 from selenium import webdriver
 from selenium.common.exceptions import NoSuchElementException, TimeoutException
@@ -171,6 +172,8 @@ class Thing:
             site = "imgur"
         elif "gfycat" in thing.get_attribute("data-domain"):
             site = "gfycat"
+        elif "redgifs" in thing.get_attribute("data-domain"):
+            site = "redgifs"
         elif "artstation." in thing.get_attribute("data-url"):
             site = "artstation"
             src = thing.get_attribute("data-url").split("?")[0]
@@ -299,15 +302,75 @@ class Thing:
                 self.driver.execute_script("window.stop()")
             # for capitalization differences only, make the quick url checks again to prevent long wait times
             url = self.driver.current_url
-            for prefix in gfycat_video_url_prefixes:
-                url_trial = url.replace("gfycat.com", prefix + ".gfycat.com") + ".mp4"
-                video_not_found = is_403_error_page(url_trial)
-                if video_not_found:
-                    continue
-                else:
-                    self.driver.execute_script("window.close()")
-                    self.driver.switch_to.window(self.driver.window_handles[0])
-                    return url_trial
+            if "gifdeliverynetwork.com" in url:
+                source_elem_path = "//video[contains(@class,\"video\")]" \
+                                   "/source[contains(@type,\"video/mp4\")]"
+                sources = self.driver.find_elements_by_xpath(source_elem_path)
+                # return src of source_elem (maybe array into singleton into attribute)
+                src = ""
+                for source in sources:
+                    if "mp4Source" in source.get_attribute("id"):
+                        src = source.get_attribute("src")
+                # close window using js
+                self.driver.execute_script("window.close()")
+                self.driver.switch_to.window(self.driver.window_handles[0])
+            else:
+                for prefix in gfycat_video_url_prefixes:
+                    url_trial = url.replace("gfycat.com", prefix + ".gfycat.com") + ".mp4"
+                    video_not_found = is_403_error_page(url_trial)
+                    if video_not_found:
+                        continue
+                    else:
+                        self.driver.execute_script("window.close()")
+                        self.driver.switch_to.window(self.driver.window_handles[0])
+                        return url_trial
+                # source_elem = //video[class includes video and media]/source[type is "video/mp4" src includes fat.gfycat]
+                source_elem_path = "//video[contains(@class,\"video\") and contains(@class,\"media\")]" \
+                                   "/source[contains(@type,\"video/mp4\")]"
+                sources = self.driver.find_elements_by_xpath(source_elem_path)
+                # return src of source_elem (maybe array into singleton into attribute)
+                src = ""
+                for source in sources:
+                    if "thumbs.g" not in source.get_attribute("src"):
+                        src = source.get_attribute("src")
+                # close window using js
+                self.driver.execute_script("window.close()")
+                self.driver.switch_to.window(self.driver.window_handles[0])
+                # return the found source
+            if src == "":
+                return -6
+            return src
+        if self.site == "redgifs":
+            # try guessing fat and giant prefixed mp4 files
+            # gfycat_video_url_prefixes = ["fat", "giant"]
+            url = self.data_url
+            # for prefix in gfycat_video_url_prefixes:
+            #    url_trial = url.replace("gfycat.com", prefix + ".gfycat.com") + ".mp4"
+            #    video_not_found = is_403_error_page(url_trial)
+            #    if video_not_found:
+            #        continue
+            #    else:
+            #        return url_trial
+            # if we can't guess the url, follow the gfycat link to get a better look
+            # open new window and switch to it using js
+            self.driver.execute_script("window.open()")
+            self.driver.switch_to.window(self.driver.window_handles[1])
+            # load new window with the gfycat link
+            try:
+                self.driver.get(url)
+            except TimeoutException:
+                self.driver.execute_script("window.stop()")
+            # for capitalization differences only, make the quick url checks again to prevent long wait times
+            url = self.driver.current_url
+            #for prefix in gfycat_video_url_prefixes:
+            #    url_trial = url.replace("gfycat.com", prefix + ".gfycat.com") + ".mp4"
+            #    video_not_found = is_403_error_page(url_trial)
+            #    if video_not_found:
+            #        continue
+            #    else:
+            #        self.driver.execute_script("window.close()")
+            #        self.driver.switch_to.window(self.driver.window_handles[0])
+            #        return url_trial
             # source_elem = //video[class includes video and media]/source[type is "video/mp4" src includes fat.gfycat]
             source_elem_path = "//video[contains(@class,\"video\") and contains(@class,\"media\")]" \
                                "/source[contains(@type,\"video/mp4\")]"
@@ -315,8 +378,9 @@ class Thing:
             # return src of source_elem (maybe array into singleton into attribute)
             src = ""
             for source in sources:
-                if "thumbs.g" not in source.get_attribute("src"):
-                    src = source.get_attribute("src")
+                if "-mobile." not in source.get_attribute("src"):
+                    if "mp4" in source.get_attribute("src"):
+                        src = source.get_attribute("src")
             # close window using js
             self.driver.execute_script("window.close()")
             self.driver.switch_to.window(self.driver.window_handles[0])
@@ -449,6 +513,8 @@ def is_403_error_page(url):
             return 0
     except HTTPError:
         return 1
+    except RemoteDisconnected:
+        print("remote end closed connection without response (" + url + ")")
     except URLError:
         print("url error in is_403_error_page(" + url + ")")
         return 1
