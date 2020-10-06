@@ -60,6 +60,10 @@ class SubredditDownloader:
                 urllib.request.urlretrieve(media_url, save_path)
             except URLError:
                 print("urlOpen error for " + media_url)
+            except RemoteDisconnected:
+                print("RemoteDisconnected error error for " + media_url)
+            except ConnectionResetError:
+                print("ConnectionResetError error for " + media_url)
             return 0
 
     def next_page(self):
@@ -302,7 +306,7 @@ class Thing:
                 self.driver.execute_script("window.stop()")
             # for capitalization differences only, make the quick url checks again to prevent long wait times
             url = self.driver.current_url
-            if "gifdeliverynetwork.com" in url:
+            if "gifdeliverynetwork.c" in url:
                 source_elem_path = "//video[contains(@class,\"video\")]" \
                                    "/source[contains(@type,\"video/mp4\")]"
                 sources = self.driver.find_elements_by_xpath(source_elem_path)
